@@ -1,0 +1,23 @@
+{
+  "name": "@x402/error-handling-example",
+  "version": "1.0.0",
+  "description": "Comprehensive error handling example for x402 TypeScript clients",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@x402/core": "workspace:*",
+    "@x402/mechanisms-evm": "workspace:*",
+    "dotenv": "^16.4.0",
+    "viem": "^2.21.57",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.2"
+  },
+  "private": true
+}
