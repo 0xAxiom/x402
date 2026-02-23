@@ -113,6 +113,35 @@ The EIP-3009 standard is essential for x402 because it enables:
 2. **One-step payments**: No separate approval transactions required
 3. **Universal facilitator support**: Any EIP-3009 token works with any facilitator
 
+### Contract Deployment Status
+
+Some x402 features require specific contracts to be deployed on each network. This section tracks the deployment status of required infrastructure contracts.
+
+#### Permit2 Proxy Contracts
+
+For EVM networks using Permit2-based payment schemes, two proxy contracts must be deployed:
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| x402ExactPermit2Proxy | `0x4020615294c913F045dc10f0a5cdEbd86c280001` | Exact amount payments via Permit2 |
+| x402UptoPermit2Proxy | `0x4020633461b2895a48930Ff97eE8fCdE8E520002` | Variable amount payments via Permit2 |
+
+**Current Deployment Status:**
+
+| Network | CAIP-2 ID | Exact Proxy | Upto Proxy | Notes |
+|---------|-----------|-------------|-------------|--------|
+| Base | `eip155:8453` | ✅ | ✅ | Fully supported |
+| Base Sepolia | `eip155:84532` | ✅ | ✅ | Fully supported |
+| Optimism Sepolia | `eip155:11155420` | ❌ | ❌ | [Issue #1299](https://github.com/coinbase/x402/issues/1299) |
+
+**Important:** If you encounter settlement failures on any EVM network, check whether the required proxy contracts are deployed. Missing contracts will cause silent failures where `settle()` returns success but no tokens are transferred.
+
+**For Developers:** You can verify contract deployment by checking if bytecode exists at the proxy addresses above. If contracts are missing on your target network, please [open an issue](https://github.com/coinbase/x402/issues) to request deployment.
+
+#### Canonical Permit2 Contract
+
+The canonical Permit2 contract is required on all EVM networks and should be deployed at `0x000000000022D473030F116dDEE9F6B43aC78BA3` via CREATE2. Most major networks already have this deployed.
+
 ### Quick Reference
 
 | Facilitator Type | Networks Supported | Production Ready | Requirements |
