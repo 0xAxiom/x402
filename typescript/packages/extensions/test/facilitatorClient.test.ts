@@ -268,5 +268,227 @@ describe("Bazaar Client Extension - facilitatorClient", () => {
       expect(result.items[0].lastUpdated).toBe("2024-01-01T00:00:00.000Z");
       expect(result.pagination.total).toBe(12234);
     });
+
+    it("should make force refresh request with correct parameters", async () => {
+      const mockRefreshResponse = {
+        success: true,
+        resource: {
+          resource:
+            "https://restricted-party-screen.vercel.app/api/ofac-sanctions-screening/SBERBANK",
+          type: "http",
+          x402Version: 2,
+          accepts: [],
+          lastUpdated: "2026-03-17T18:00:00.000Z",
+          metadata: { category: "compliance" },
+        },
+        refreshedAt: "2026-03-17T18:00:00.000Z",
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockRefreshResponse),
+      });
+
+      const facilitatorClient = new HTTPFacilitatorClient({
+        url: "https://x402.org/facilitator",
+      });
+      const extendedClient = withBazaar(facilitatorClient);
+
+      const result = await extendedClient.extensions.discovery.forceRefresh({
+        resource:
+          "https://restricted-party-screen.vercel.app/api/ofac-sanctions-screening/SBERBANK",
+        verifyAfterRefresh: true,
+        timeoutSeconds: 60,
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://x402.org/facilitator/discovery/refresh",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({
+            resource:
+              "https://restricted-party-screen.vercel.app/api/ofac-sanctions-screening/SBERBANK",
+            verifyAfterRefresh: true,
+            timeoutSeconds: 60,
+          }),
+        }),
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.resource?.lastUpdated).toBe("2026-03-17T18:00:00.000Z");
+      expect(result.refreshedAt).toBe("2026-03-17T18:00:00.000Z");
+    });
+
+    it("should handle force refresh errors correctly", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve("Internal server error"),
+      });
+
+      const facilitatorClient = new HTTPFacilitatorClient({
+        url: "https://x402.org/facilitator",
+      });
+      const extendedClient = withBazaar(facilitatorClient);
+
+      await expect(
+        extendedClient.extensions.discovery.forceRefresh({
+          resource: "https://bad-endpoint.example.com/api/test",
+        }),
+      ).rejects.toThrow("Facilitator forceRefresh failed (500): Internal server error");
+    });
+
+    it("should validate metadata and detect stale resources", async () => {
+      const staleResource = {
+        resource: "https://stale-endpoint.example.com/api/test",
+        type: "http",
+        x402Version: 1,
+        accepts: [],
+        lastUpdated: "2026-03-15T10:00:00.000Z", // 2+ days old
+        metadata: {},
+      };
+
+      // Mock the listResources call that validateMetadata makes internally
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            x402Version: 1,
+            items: [staleResource],
+            pagination: { limit: 100, offset: 0, total: 1 },
+          }),
+      });
+
+      const facilitatorClient = new HTTPFacilitatorClient({
+        url: "https://x402.org/facilitator",
+      });
+      const extendedClient = withBazaar(facilitatorClient);
+
+      const result = await extendedClient.extensions.discovery.validateMetadata({
+        resource: "https://stale-endpoint.example.com/api/test",
+        expectedMinLastUpdated: "2026-03-17T00:00:00.000Z",
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.currentMetadata).toEqual(staleResource);
+      expect(result.issues).toEqual([
+        "Resource last updated 2026-03-15T10:00:00.000Z is older than expected minimum 2026-03-17T00:00:00.000Z",
+        "Resource last updated 2026-03-15T10:00:00.000Z is more than 24 hours old, may be stale",
+      ]);
+      expect(result.validatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    });
+
+    it("should validate metadata with live endpoint check", async () => {
+      const validResource = {
+        resource: "https://live-endpoint.example.com/api/test",
+        type: "http",
+        x402Version: 2,
+        accepts: [],
+        lastUpdated: "2026-03-17T17:30:00.000Z",
+        metadata: { category: "test" },
+      };
+
+      // Mock the listResources call
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              x402Version: 2,
+              items: [validResource],
+              pagination: { limit: 100, offset: 0, total: 1 },
+            }),
+        })
+        // Mock the live endpoint check
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 402,
+          headers: new Map([["www-authenticate", "Bearer"]]),
+        });
+
+      const facilitatorClient = new HTTPFacilitatorClient({
+        url: "https://x402.org/facilitator",
+      });
+      const extendedClient = withBazaar(facilitatorClient);
+
+      const result = await extendedClient.extensions.discovery.validateMetadata({
+        resource: "https://live-endpoint.example.com/api/test",
+        includeLiveCheck: true,
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.liveEndpointStatus?.responding).toBe(true);
+      expect(result.liveEndpointStatus?.statusCode).toBe(402);
+      expect(result.liveEndpointStatus?.hasX402Requirements).toBe(true);
+    });
+
+    it("should detect when resource is not in discovery index", async () => {
+      // Mock empty response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            x402Version: 1,
+            items: [],
+            pagination: { limit: 100, offset: 0, total: 0 },
+          }),
+      });
+
+      const facilitatorClient = new HTTPFacilitatorClient({
+        url: "https://x402.org/facilitator",
+      });
+      const extendedClient = withBazaar(facilitatorClient);
+
+      const result = await extendedClient.extensions.discovery.validateMetadata({
+        resource: "https://missing-endpoint.example.com/api/test",
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.issues).toContain(
+        "Resource https://missing-endpoint.example.com/api/test not found in discovery index",
+      );
+    });
+
+    it("should handle live endpoint check failures gracefully", async () => {
+      const validResource = {
+        resource: "https://broken-endpoint.example.com/api/test",
+        type: "http",
+        x402Version: 2,
+        accepts: [],
+        lastUpdated: "2026-03-17T17:30:00.000Z",
+        metadata: {},
+      };
+
+      // Mock the listResources call
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              x402Version: 2,
+              items: [validResource],
+              pagination: { limit: 100, offset: 0, total: 1 },
+            }),
+        })
+        // Mock failed live endpoint check
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const facilitatorClient = new HTTPFacilitatorClient({
+        url: "https://x402.org/facilitator",
+      });
+      const extendedClient = withBazaar(facilitatorClient);
+
+      const result = await extendedClient.extensions.discovery.validateMetadata({
+        resource: "https://broken-endpoint.example.com/api/test",
+        includeLiveCheck: true,
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.liveEndpointStatus?.responding).toBe(false);
+      expect(result.issues).toEqual(["Live endpoint check failed: Network error"]);
+    });
   });
 });
