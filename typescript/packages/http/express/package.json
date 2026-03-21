@@ -68,5 +68,6 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "type": "module"
 }

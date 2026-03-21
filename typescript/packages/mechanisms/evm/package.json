@@ -123,5 +123,6 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "type": "module"
 }
