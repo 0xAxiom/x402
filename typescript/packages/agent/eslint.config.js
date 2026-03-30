@@ -16,18 +16,21 @@ export default [
         URL: 'readonly',
         RequestInit: 'readonly',
         Response: 'readonly',
-        TextEncoder: 'readonly'
-      }
+        TextEncoder: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': ts,
     },
     rules: {
       ...ts.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_' }],
-      'no-unused-vars': ['error', { 'argsIgnorePattern': '^_', 'varsIgnorePattern': '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'off', // Allow console in this package since it's for examples and debugging
-      'no-undef': 'off' // Turn off no-undef since we have TypeScript checking
+      'no-undef': 'off', // Turn off no-undef since we have TypeScript checking
     },
   },
   js.configs.recommended,
