@@ -4,7 +4,7 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
 import { base58 } from '@scure/base'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { homedir } from 'os'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { z } from 'zod'
 
 // Add fetch types globally
@@ -149,7 +149,7 @@ async function loadOrCreateWallet(
   config: X402AgentConfig,
 ): Promise<WalletConfig> {
   // Ensure directory exists
-  const dir = join(walletPath, '..')
+  const dir = dirname(walletPath)
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
@@ -196,6 +196,12 @@ async function loadOrCreateWallet(
     console.log(
       'ℹ️  Solana support not available. EVM-only mode. Install @solana/kit for Solana support.',
     )
+  }
+
+  // Ensure directory still exists before saving (for concurrent operations)
+  const walletDir = dirname(walletPath)
+  if (!existsSync(walletDir)) {
+    mkdirSync(walletDir, { recursive: true })
   }
 
   // Save wallet
