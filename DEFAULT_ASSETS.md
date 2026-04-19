@@ -28,9 +28,9 @@ For Permit2 tokens, also check whether the token implements EIP-2612 `permit()`:
 3. Check whether the token supports EIP-3009 (`transferWithAuthorization`)
 4. If not, check whether it supports EIP-2612 (`permit()`)
 
-### 2. Update all three SDKs
+### 2. Update all three SDKs and docs
 
-Add an entry in each SDK's constants file. All three **must** use the same CAIP-2 key, token address, EIP-712 `name`/`version`, decimals, and transfer method.
+Add an entry in each SDK's constants file and update the two user-facing documentation tables (see [Cross-SDK Checklist](#cross-sdk-checklist) below). All three **must** use the same CAIP-2 key, token address, EIP-712 `name`/`version`, decimals, and transfer method.
 
 <details>
 <summary><strong>TypeScript</strong> — <code>typescript/packages/mechanisms/evm/src/shared/defaultAssets.ts</code></summary>
@@ -103,8 +103,19 @@ The default asset is chosen **per chain** based on:
 
 ## Cross-SDK Checklist
 
+When adding a new chain, update **all five** of the following locations:
+
+### SDK Registries
+
 | SDK | File | Map/Dict |
 |-----|------|----------|
 | **TypeScript** | `typescript/packages/mechanisms/evm/src/shared/defaultAssets.ts` | `DEFAULT_STABLECOINS` |
 | **Go** | `go/mechanisms/evm/constants.go` | `NetworkConfigs` |
 | **Python** | `python/x402/mechanisms/evm/constants.py` | `NETWORK_CONFIGS` |
+
+### User-Facing Documentation
+
+| File | What to update |
+|------|----------------|
+| `docs/core-concepts/network-and-token-support.mdx` | Add a row to the EVM default-assets table |
+| `go/mechanisms/evm/README.md` | Add a row to the Supported Networks table |
