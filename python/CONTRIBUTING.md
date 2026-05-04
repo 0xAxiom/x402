@@ -195,6 +195,29 @@ uv run pytest -v
 uv run pytest --cov=x402
 ```
 
+### Integration Tests
+
+`tests/integrations/` contains end-to-end suites. Mock-cash suites
+(`test_core.py`, `test_http_integration.py`, `test_async_behavior.py`) run
+without any configuration. The EVM, SVM, and MCP-EVM suites submit real
+testnet transactions and skip cleanly when the required environment variables
+aren't set.
+
+To run them locally:
+
+```bash
+cp .env.example .env
+# Edit python/x402/.env with testnet-only keys and addresses
+
+uv run pytest tests/integrations
+```
+
+`tests/conftest.py` loads `python/x402/.env` (or a repo-root `.env`)
+automatically — no separate `source` step is needed. See
+[`tests/integrations/README.md`](x402/tests/integrations/README.md) and
+[`x402/.env.example`](x402/.env.example) for the full list of supported
+variables and faucet links.
+
 ### Test Organization
 
 ```
