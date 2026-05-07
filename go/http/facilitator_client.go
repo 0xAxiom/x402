@@ -3,9 +3,11 @@ package http
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -166,6 +168,40 @@ func parseSettleSuccessResponse(body []byte) (*x402.SettleResponse, error) {
 		Transaction:  *response.Transaction,
 		Network:      *response.Network,
 	}, nil
+}
+
+var extensionResponseLogFieldAllowlist = []string{"status", "rejectedReason", "reason", "code"}
+
+// logExtensionResponsesHeader reads the EXTENSION-RESPONSES header from an HTTP response
+// and logs allowlisted fields. Silently ignores malformed headers.
+func logExtensionResponsesHeader(resp *http.Response) {
+	header := resp.Header.Get("EXTENSION-RESPONSES")
+	if header == "" {
+		return
+	}
+	decoded, err := base64.StdEncoding.DecodeString(header)
+	if err != nil {
+		return
+	}
+	var headerExtensions map[string]interface{}
+	if err := json.Unmarshal(decoded, &headerExtensions); err != nil {
+		return
+	}
+	sanitized := make(map[string]map[string]interface{}, len(headerExtensions))
+	for extensionKey, payload := range headerExtensions {
+		filtered := make(map[string]interface{})
+		if payloadMap, ok := payload.(map[string]interface{}); ok {
+			for _, fieldKey := range extensionResponseLogFieldAllowlist {
+				if value, exists := payloadMap[fieldKey]; exists {
+					filtered[fieldKey] = value
+				}
+			}
+		}
+		sanitized[extensionKey] = filtered
+	}
+	if extJSON, err := json.Marshal(sanitized); err == nil {
+		log.Printf("[x402] extension responses: %s", extJSON)
+	}
 }
 
 func parseSupportedSuccessResponse(body []byte) (x402.SupportedResponse, error) {
@@ -419,7 +455,12 @@ func (c *HTTPFacilitatorClient) verifyHTTP(ctx context.Context, version int, pay
 		return nil, fmt.Errorf("facilitator verify failed (%d): %s", resp.StatusCode, string(responseBody))
 	}
 
-	return parseVerifySuccessResponse(responseBody)
+	result, err := parseVerifySuccessResponse(responseBody)
+	if err != nil {
+		return nil, err
+	}
+	logExtensionResponsesHeader(resp)
+	return result, nil
 }
 
 func (c *HTTPFacilitatorClient) settleHTTP(ctx context.Context, version int, payloadBytes, requirementsBytes []byte) (*x402.SettleResponse, error) {
@@ -496,5 +537,10 @@ func (c *HTTPFacilitatorClient) settleHTTP(ctx context.Context, version int, pay
 		return nil, fmt.Errorf("facilitator settle failed (%d): %s", resp.StatusCode, string(responseBody))
 	}
 
-	return parseSettleSuccessResponse(responseBody)
+	result, err := parseSettleSuccessResponse(responseBody)
+	if err != nil {
+		return nil, err
+	}
+	logExtensionResponsesHeader(resp)
+	return result, nil
 }
