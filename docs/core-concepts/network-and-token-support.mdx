@@ -12,10 +12,11 @@ x402 uses [CAIP-2](https://chainagnostic.org/CAIPs/caip-2) standard network iden
 - **Algorand**: `algorand:<genesisHash>` (base64-encoded genesis hash)
 - **Stellar**: `stellar:<network>` (`pubnet` or `testnet`)
 - **Aptos**: `aptos:<chainId>` (e.g., `aptos:1` for mainnet)
+- **Hedera**: `hedera:<network>` (`mainnet` or `testnet`)
 
 ## Token Support
 
-x402 supports tokens on EVM, Solana, Stellar, and Aptos networks:
+x402 supports tokens on EVM, Solana, Stellar, Aptos, and Hedera networks:
 
 | Ecosystem | Supported Tokens | Transfer Method |
 |-----------|------------------|-----------------|
@@ -23,6 +24,7 @@ x402 supports tokens on EVM, Solana, Stellar, and Aptos networks:
 | **Solana** | Any SPL or Token-2022 token | SPL Transfer |
 | **Stellar** | Any Soroban token implementing SEP-41 | `transfer(from, to, amount)` |
 | **Aptos** | Any fungible asset | `primary_fungible_store::transfer` |
+| **Hedera** | HBAR or any HTS fungible token | Hedera Transfer Transaction |
 
 Facilitators support **networks**, not specific tokens — any compatible token works on any facilitator that supports that network.
 
@@ -118,6 +120,15 @@ When you use `"$0.01"` syntax, x402 needs to know which stablecoin to use. The f
 |-------|--------|----------------------|----------|
 | Aptos Mainnet | `aptos:1` | `0xbae207659db88bea0cbead6da0ed00aac12edcdda169e591cd41c94180b46f3b` (USDC) | 6 |
 | Aptos Testnet | `aptos:2` | `0x69091fbab5f7d635ee7ac5098cf0c1efbe31d68fec0f2cd565e8d168daf52832` (USDC) | 6 |
+
+### Hedera
+
+| Chain | CAIP-2 | Token ID | Decimals |
+|-------|--------|----------|----------|
+| Hedera Mainnet | `hedera:mainnet` | `0.0.456858` (USDC) | 6 |
+| Hedera Testnet | `hedera:testnet` | `0.0.429274` (USDC) | 6 |
+
+HBAR (native token) is also supported using asset ID `0.0.0`, with amounts in tinybars (1 HBAR = 10⁸ tinybars).
 
 ## Adding Support for New Networks
 
@@ -251,7 +262,7 @@ Video Guide: [Adding EVM Chains to x402](https://x.com/jaycoolh/status/192085155
 
 Key takeaways:
 
-* **Any EVM chain** is supported via `eip155:<chainId>` — plus Solana, Stellar, and Aptos
+* **Any EVM chain** is supported via `eip155:<chainId>` — plus Solana, Stellar, Aptos, and Hedera
 * [Default assets](#default-assets-for-dollar-string-pricing) are a convenience for `"$0.01"` dollar-string pricing; explicit `TokenAmount` works on any chain
 * Any ERC-20 token works on any EVM facilitator (via EIP-3009 or Permit2)
 * CAIP-2 identifiers provide unambiguous cross-chain support
